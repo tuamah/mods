@@ -159,11 +159,14 @@ async function saveTracked(
 
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
-    await $.command.register({
-      name: 'status',
-      description:
-        'Project status band: /status progress 40 | /status exp T5 develop success | /status result fail | /status clear | /status hide | /status show',
-    })
+    // A refused command (e.g. a name clash) must not stop the band and tool below.
+    await $.command
+      .register({
+        name: 'pstatus',
+        description:
+          'Project status band: /pstatus progress 40 | /pstatus exp T5 develop success | /pstatus result fail | /pstatus clear | /pstatus hide | /pstatus show',
+      })
+      .catch(() => $.ui.toast('project-status: could not register /pstatus'))
     await $.tool.register({
       name: 'set_status',
       description:
@@ -234,7 +237,7 @@ export const register: Register = on => {
     return { result: `Status band updated: ${JSON.stringify(saved)}` }
   })
 
-  on('command.run', { command: 'status' }, async ($, e) => {
+  on('command.run', { command: 'pstatus' }, async ($, e) => {
     const [verb = '', ...rest] = e.args.trim().split(/\s+/).filter(Boolean)
 
     if (verb === 'hide' || verb === 'show') {
@@ -251,7 +254,7 @@ export const register: Register = on => {
 
     if (verb === 'progress' || /^\d+%?$/.test(verb)) {
       const value = Number((verb === 'progress' ? rest[0] : verb)?.replace('%', ''))
-      if (!Number.isFinite(value)) return { text: 'Usage: /status progress 40' }
+      if (!Number.isFinite(value)) return { text: 'Usage: /pstatus progress 40' }
       await saveTracked($, old => ({ ...old, progress: Math.round(Math.min(100, Math.max(0, value))) }))
 
       return { text: `Progress set to ${Math.round(Math.min(100, Math.max(0, value)))}%.` }
@@ -262,7 +265,7 @@ export const register: Register = on => {
       const kind = KINDS[rest[rest.length - 2] ?? '']
       const name = rest.slice(0, -2).join(' ')
       if (!result || !kind || !name) {
-        return { text: 'Usage: /status exp <name> <initial|fix|develop> <running|success|fail>' }
+        return { text: 'Usage: /pstatus exp <name> <initial|fix|develop> <running|success|fail>' }
       }
       await saveTracked($, old => ({ ...old, experiment: { name, kind, result } }))
 
@@ -272,7 +275,7 @@ export const register: Register = on => {
     if (verb === 'result') {
       const result = RESULTS[rest[0] ?? '']
       const current = (await read($, tracked)).experiment
-      if (!result || !current) return { text: 'Usage: /status result <running|success|fail> (needs an experiment set)' }
+      if (!result || !current) return { text: 'Usage: /pstatus result <running|success|fail> (needs an experiment set)' }
       await saveTracked($, old => ({ ...old, experiment: { ...current, result } }))
 
       return { text: `Experiment ${current.name}: ${experimentLabel({ ...current, result })}` }

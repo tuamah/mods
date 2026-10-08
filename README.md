@@ -21,12 +21,12 @@ Answer `y` to add the marketplace, then pick a scope (user scope loads it in eve
 
 | Command | Effect |
 |---|---|
-| `/status progress 40` | set progress |
-| `/status exp T5 develop success` | set experiment: name, `initial`/`fix`/`develop`, `running`/`success`/`fail` |
-| `/status result fail` | change the current experiment's result |
-| `/status clear` | clear progress and experiment |
-| `/status hide` / `/status show` | hide or show the band |
-| `/status` | print a summary |
+| `/pstatus progress 40` | set progress |
+| `/pstatus exp T5 develop success` | set experiment: name, `initial`/`fix`/`develop`, `running`/`success`/`fail` |
+| `/pstatus result fail` | change the current experiment's result |
+| `/pstatus clear` | clear progress and experiment |
+| `/pstatus hide` / `/pstatus show` | hide or show the band |
+| `/pstatus` | print a summary |
 
 Claude can also update the band itself through the `mcp__project-status__set_status` tool. Progress and experiment are saved per project and branch.
 

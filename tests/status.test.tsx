@@ -39,10 +39,10 @@ test('formats durations and the progress bar', () => {
   expect(bar(40)).toBe('▰▰▰▰▱▱▱▱▱▱')
 })
 
-test('/status sets progress and experiment and the band shows them', async ($, on) => {
+test('/pstatus sets progress and experiment and the band shows them', async ($, on) => {
   engine(on)
-  await $.command.run({ ...RUN, command: 'status', args: 'progress 40' })
-  await $.command.run({ ...RUN, command: 'status', args: 'exp T5 develop success' })
+  await $.command.run({ ...RUN, command: 'pstatus', args: 'progress 40' })
+  await $.command.run({ ...RUN, command: 'pstatus', args: 'exp T5 develop success' })
 
   for (const surface of SURFACES) {
     const ui = await $.ui.mount({
@@ -57,9 +57,9 @@ test('/status sets progress and experiment and the band shows them', async ($, o
   }
 })
 
-test('/status hide leaves the band to the engine', async ($, on) => {
+test('/pstatus hide leaves the band to the engine', async ($, on) => {
   engine(on)
-  await $.command.run({ ...RUN, command: 'status', args: 'hide' })
+  await $.command.run({ ...RUN, command: 'pstatus', args: 'hide' })
   const ui = await $.ui.mount({
     plugin: 'project-status',
     surface: 'terminal',
