@@ -1,0 +1,5 @@
+{
+  "name": "mods",
+  "owner": { "name": "Tuama M Hamzah" },
+  "plugins": [{ "name": "project-status", "source": "./" }]
+}
