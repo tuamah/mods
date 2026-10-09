@@ -1,4 +1,5 @@
 import { ExperimentEngine, defaultDatabasePath } from '../../core/src/index.mjs'
+import { install, uninstall } from '../../adapters/src/installer.mjs'
 
 function options(args) {
   const positional = []; const flags = {}
@@ -37,6 +38,8 @@ function statusText(value) {
 
 const help = `mods commands:
   doctor
+  install --host auto|claude|codex [--project PATH] [--apply]
+  uninstall --host claude|codex [--project PATH] [--apply]
   status [--format text|json] [--cwd PATH]
   progress <0-100> [--host claude|codex|cli]
   experiment create <name> --type initial|fix|develop [--description TEXT]
@@ -55,7 +58,7 @@ export async function main(argv, io = process) {
   const { positional: p, flags: f } = options(argv)
   const command = p[0]
   if (!command || ['help', '-h', '--help'].includes(command)) { io.stdout.write(`${help}\n`); return }
-  if (command === 'mcp') { await import('../../mcp-server/src/server.mjs'); return }
+  if (command === 'mcp') { const { serve } = await import('../../mcp-server/src/server.mjs'); await serve(); return }
   if (command === 'doctor') {
     const engine = new ExperimentEngine()
     try {
@@ -64,10 +67,20 @@ export async function main(argv, io = process) {
     } finally { engine.close() }
     return
   }
+  if (command === 'install' || command === 'uninstall') {
+    const operation = command === 'install' ? install : uninstall
+    const result = operation({ requestedHost: f.host || 'auto', project: f.project || process.cwd(), apply: Boolean(f.apply) })
+    io.stdout.write(`${JSON.stringify(result, null, 2)}\n`)
+    return
+  }
   const engine = new ExperimentEngine()
   const cwd = f.cwd || process.cwd(); const host = f.host || 'cli'; const branch = f.branch === 'current' ? undefined : f.branch
   try {
     let result
+    if (command === 'bridge' && p[1] === 'sync-legacy') {
+      result = engine.applyLegacyState({ cwd, branch, tracked: JSON.parse(String(f.state || '{}')), host })
+      io.stdout.write(`${JSON.stringify(result)}\n`); return
+    }
     if (command === 'status') {
       result = engine.getProjectStatus({ cwd, branch })
       io.stdout.write(f.format === 'json' ? `${JSON.stringify(result, null, 2)}\n` : `${statusText(result)}\n`); return

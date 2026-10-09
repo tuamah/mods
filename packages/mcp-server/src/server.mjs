@@ -1,4 +1,5 @@
 import readline from 'node:readline'
+import { pathToFileURL } from 'node:url'
 import { ExperimentEngine } from '../../core/src/index.mjs'
 
 const tools = [
@@ -8,6 +9,8 @@ const tools = [
   ['start_experiment', 'Start a pending experiment', { experimentId: { type: 'string' }, host: { type: 'string' }, idempotencyKey: { type: 'string' } }, ['experimentId']],
   ['update_experiment', 'Update description or metadata', { experimentId: { type: 'string' }, description: { type: 'string' }, metadata: { type: 'object' }, host: { type: 'string' }, idempotencyKey: { type: 'string' } }, ['experimentId']],
   ['finish_experiment', 'Complete an experiment with an outcome', { experimentId: { type: 'string' }, result: { type: 'string', enum: ['success','fail','inconclusive'] }, host: { type: 'string' }, idempotencyKey: { type: 'string' } }, ['experimentId','result']],
+  ['cancel_experiment', 'Cancel a pending, running, or interrupted experiment', { experimentId: { type: 'string' }, host: { type: 'string' }, idempotencyKey: { type: 'string' } }, ['experimentId']],
+  ['resume_experiment', 'Resume an interrupted experiment', { experimentId: { type: 'string' }, host: { type: 'string' }, idempotencyKey: { type: 'string' } }, ['experimentId']],
   ['get_current_experiment', 'Read the current experiment', { cwd: { type: 'string' }, branch: { type: 'string' } }],
   ['list_experiments', 'List and filter experiments', { cwd: { type: 'string' }, branch: { type: 'string' }, host: { type: 'string' }, type: { type: 'string' }, status: { type: 'string' }, result: { type: 'string' }, limit: { type: 'number' } }],
   ['get_experiment_history', 'Read append-only events', { experimentId: { type: 'string' } }, ['experimentId']],
@@ -15,13 +18,33 @@ const tools = [
   ['export_experiments', 'Export stable JSON records', { cwd: { type: 'string' }, branch: { type: 'string' }, limit: { type: 'number' } }],
 ].map(([name, description, properties, required = []]) => ({ name, description, inputSchema: { type: 'object', properties, required, additionalProperties: false } }))
 
+function validateToolCall(name, args) {
+  const tool = tools.find(candidate => candidate.name === name)
+  if (!tool) throw Object.assign(new Error(`Unknown tool: ${name}`), { code: 'METHOD_NOT_FOUND' })
+  if (!args || typeof args !== 'object' || Array.isArray(args)) throw Object.assign(new Error('Tool arguments must be an object'), { code: 'INVALID_ARGUMENTS' })
+  for (const required of tool.inputSchema.required) {
+    if (!(required in args)) throw Object.assign(new Error(`Missing required argument: ${required}`), { code: 'INVALID_ARGUMENTS' })
+  }
+  for (const [key, value] of Object.entries(args)) {
+    const definition = tool.inputSchema.properties[key]
+    if (!definition) throw Object.assign(new Error(`Unknown argument: ${key}`), { code: 'INVALID_ARGUMENTS' })
+    if (definition.type === 'number' && typeof value !== 'number') throw Object.assign(new Error(`${key} must be a number`), { code: 'INVALID_ARGUMENTS' })
+    if (definition.type === 'string' && typeof value !== 'string') throw Object.assign(new Error(`${key} must be a string`), { code: 'INVALID_ARGUMENTS' })
+    if (definition.type === 'object' && (!value || typeof value !== 'object' || Array.isArray(value))) throw Object.assign(new Error(`${key} must be an object`), { code: 'INVALID_ARGUMENTS' })
+    if (definition.enum && !definition.enum.includes(value)) throw Object.assign(new Error(`${key} has an unsupported value`), { code: 'INVALID_ARGUMENTS' })
+  }
+}
+
 export function dispatch(engine, name, a = {}) {
+  validateToolCall(name, a)
   if (name === 'get_project_status') return engine.getProjectStatus(a)
   if (name === 'set_project_progress') return engine.setProgress(a)
   if (name === 'create_experiment') return engine.createExperiment(a)
   if (name === 'start_experiment') return engine.startExperiment(a.experimentId, a)
   if (name === 'update_experiment') return engine.updateExperiment(a.experimentId, a)
   if (name === 'finish_experiment') return engine.finishExperiment(a.experimentId, a)
+  if (name === 'cancel_experiment') return engine.cancelExperiment(a.experimentId, a)
+  if (name === 'resume_experiment') return engine.resumeExperiment(a.experimentId, a)
   if (name === 'get_current_experiment') return engine.getProjectStatus(a).currentExperiment
   if (name === 'list_experiments' || name === 'export_experiments') return engine.listExperiments(a)
   if (name === 'get_experiment_history') return engine.getHistory(a.experimentId)
@@ -35,6 +58,7 @@ export async function serve(input = process.stdin, output = process.stdout, opti
   const send = value => output.write(`${JSON.stringify(value)}\n`)
   lines.on('line', line => {
     if (!line.trim()) return
+    if (line.length > 1_048_576) { send({ jsonrpc: '2.0', id: null, error: { code: -32600, message: 'Request exceeds 1 MiB' } }); return }
     let message
     try { message = JSON.parse(line) } catch { send({ jsonrpc: '2.0', id: null, error: { code: -32700, message: 'Parse error' } }); return }
     if (message.method === 'notifications/initialized') return
@@ -54,4 +78,4 @@ export async function serve(input = process.stdin, output = process.stdout, opti
   lines.on('close', () => engine.close())
 }
 
-if (import.meta.url === new URL(`file://${process.argv[1].replace(/\\/g, '/')}`).href) serve()
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) serve()

@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { normalizeRemote } from '../packages/core/src/index.mjs'
+import { normalizeRemote, canonicalPathKey } from '../packages/core/src/index.mjs'
 import { defaultStateDirectory } from '../packages/core/src/paths.mjs'
 
 test('remote normalization unifies SSH and HTTPS repository spelling', () => {
@@ -12,4 +12,9 @@ test('state paths follow platform conventions', () => {
   assert.equal(defaultStateDirectory({ LOCALAPPDATA: 'C:\\State' }, 'win32', 'C:\\Home'), 'C:\\State\\tuamah-mods')
   assert.equal(defaultStateDirectory({ XDG_STATE_HOME: '/state' }, 'linux', '/home/u'), '/state/tuamah-mods')
   assert.equal(defaultStateDirectory({}, 'darwin', '/Users/u'), '/Users/u/Library/Application Support/tuamah-mods')
+})
+
+test('POSIX project identity preserves case while Windows identity folds it', () => {
+  assert.notEqual(canonicalPathKey('/work/Project', 'linux'), canonicalPathKey('/work/project', 'linux'))
+  assert.equal(canonicalPathKey('C:\\Work\\Project', 'win32'), canonicalPathKey('c:\\work\\project', 'win32'))
 })

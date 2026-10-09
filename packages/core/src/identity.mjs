@@ -24,6 +24,11 @@ function stableId(identityKey) {
   return `prj_${crypto.createHash('sha256').update(identityKey).digest('hex').slice(0, 24)}`
 }
 
+export function canonicalPathKey(value, platform = process.platform) {
+  const normalized = value.replace(/\\/g, '/')
+  return platform === 'win32' ? normalized.toLowerCase() : normalized
+}
+
 export function resolveProjectIdentity(cwd = process.cwd()) {
   const resolvedPath = path.resolve(cwd)
   let canonicalPath = resolvedPath
@@ -37,8 +42,8 @@ export function resolveProjectIdentity(cwd = process.cwd()) {
   const identityKey = remote
     ? `git-remote:${remote}`
     : root
-      ? `git-common:${path.resolve(repositoryRoot, gitCommon).replace(/\\/g, '/').toLowerCase()}`
-      : `path:${canonicalPath.replace(/\\/g, '/').toLowerCase()}`
+      ? `git-common:${canonicalPathKey(path.resolve(repositoryRoot, gitCommon))}`
+      : `path:${canonicalPathKey(canonicalPath)}`
   const displayName = remote ? remote.split('/').at(-1) : path.basename(repositoryRoot)
   return {
     projectId: stableId(identityKey),

@@ -92,8 +92,10 @@ export class ExperimentEngine {
   }
 
   getProjectStatus({ cwd, branch } = {}) {
-    const project = this.resolveProject({ cwd, branch, host: 'read' })
+    const project = resolveProjectIdentity(cwd || process.cwd())
+    if (branch) project.branch = branch
     const status = this.database.db.prepare('SELECT * FROM project_status WHERE project_id=? AND branch=?').get(project.projectId, project.branch)
+    if (!status) return { project, progress: null, currentExperiment: null, displayExperiment: null, historyCount: 0, lastResult: null, updatedAt: null }
     const current = status.current_experiment_id ? this.getExperiment(status.current_experiment_id) : null
     const displayed = status.display_experiment_id ? this.getExperiment(status.display_experiment_id) : null
     const summary = this.database.db.prepare(`SELECT COUNT(*) count,
@@ -237,6 +239,31 @@ export class ExperimentEngine {
       this.database.db.prepare('INSERT INTO migrations VALUES (?,?,?)').run(migrationId, now(), JSON.stringify({ source, projectId: project.projectId, branch: project.branch }))
       return { imported: true, migrationId, experiment }
     })
+  }
+
+  applyLegacyState({ cwd, branch, tracked, host = 'claude' }) {
+    invariant(tracked && typeof tracked === 'object', 'INVALID_LEGACY_DATA', 'Tracked state is required')
+    if (tracked.progress === null && tracked.experiment === null) return this.clearProjectStatus({ cwd, branch, host })
+    if (typeof tracked.progress === 'number') this.setProgress({ cwd, branch, progress: tracked.progress, host })
+    const wanted = tracked.experiment
+    if (!wanted?.name) return this.getProjectStatus({ cwd, branch })
+    invariant(TYPES.has(wanted.kind), 'INVALID_TYPE', 'Legacy experiment kind is invalid')
+    invariant(['running', 'success', 'fail'].includes(wanted.result), 'INVALID_RESULT', 'Legacy experiment result is invalid')
+    let record = this.listExperiments({ cwd, branch, limit: 1 })[0]
+    if (!record || record.name !== wanted.name || record.type !== wanted.kind) {
+      record = this.createExperiment({ cwd, branch, name: wanted.name, type: wanted.kind, host })
+    }
+    if (wanted.result === 'running') {
+      if (record.status === 'pending') this.startExperiment(record.experiment_id, { host })
+      else if (record.status === 'interrupted') this.resumeExperiment(record.experiment_id, { host })
+    } else {
+      if (record.status === 'pending') record = this.startExperiment(record.experiment_id, { host })
+      if (record.status === 'running') this.finishExperiment(record.experiment_id, { host, result: wanted.result })
+      else if (record.status === 'completed' && record.result !== wanted.result) {
+        this.correctExperimentResult(record.experiment_id, { host, result: wanted.result, metadata: { corrected_via: 'legacy_bridge' } })
+      }
+    }
+    return this.getProjectStatus({ cwd, branch })
   }
 }
 

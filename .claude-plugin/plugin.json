@@ -2,5 +2,6 @@
   "name": "project-status",
   "version": "0.1.1",
   "description": "Band above the prompt: project, branch, progress, experiment status, session time and 5-hour / weekly usage",
+  "author": { "name": "Tuama M Hamzah" },
   "types": "./types/index.d.ts"
 }

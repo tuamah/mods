@@ -18,3 +18,10 @@ test('unknown MCP tools do not execute arbitrary commands', t => {
   const { engine } = fixture(t)
   assert.throws(() => dispatch(engine, 'shell_exec', { command: 'whoami' }), error => error.code === 'METHOD_NOT_FOUND')
 })
+
+test('MCP rejects missing, unknown, and mistyped arguments', t => {
+  const { engine } = fixture(t)
+  assert.throws(() => dispatch(engine, 'create_experiment', { name: 'T' }), error => error.code === 'INVALID_ARGUMENTS')
+  assert.throws(() => dispatch(engine, 'get_project_status', { shell: 'whoami' }), error => error.code === 'INVALID_ARGUMENTS')
+  assert.throws(() => dispatch(engine, 'set_project_progress', { progress: '100' }), error => error.code === 'INVALID_ARGUMENTS')
+})

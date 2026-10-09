@@ -1,5 +1,6 @@
 {
   "name": "mods",
+  "description": "Cross-host project status and experiment tracking for Claude Code and Codex.",
   "owner": { "name": "Tuama M Hamzah" },
   "plugins": [{ "name": "project-status", "source": "./" }]
 }

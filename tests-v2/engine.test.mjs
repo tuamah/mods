@@ -73,3 +73,11 @@ test('sensitive metadata keys are rejected', t => {
     error => error.code === 'SENSITIVE_METADATA',
   )
 })
+
+test('status reads do not create project or experiment records', t => {
+  const { engine, project } = fixture(t)
+  const status = engine.getProjectStatus({ cwd: project })
+  assert.equal(status.progress, null)
+  assert.equal(engine.database.db.prepare('SELECT COUNT(*) count FROM projects').get().count, 0)
+  assert.equal(engine.database.db.prepare('SELECT COUNT(*) count FROM experiments').get().count, 0)
+})
