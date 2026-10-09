@@ -46,3 +46,15 @@ The Codex integration was uninstalled from the isolated consumer project. Its MO
 ## Scope and limitations
 
 All listed runtime, plugin, installer, concurrency, security, and interactive tests were executed on Windows. Linux and macOS remain **UNVERIFIED**. Codex arbitrary custom TUI rendering remains intentionally unsupported; MCP, repository skill instructions, and the standalone status command are the supported integration. No push, merge, publish, tag, or release was performed.
+
+## Cross-platform defect patch — local Windows evidence
+
+| Command | Result |
+|---|---|
+| `node --test --test-name-pattern="concurrent legacy|failed online backup" tests-v2/concurrency.test.mjs` | PASS: 2/2 |
+| `node --test tests-v2/*.test.mjs` | PASS: 34/34 |
+| Five consecutive runs of `node --test tests-v2/concurrency.test.mjs` | PASS: 35/35 total |
+| `claude plugin test .` | PASS: 4/4 |
+| `claude plugin validate .` | PASS, with the previously documented non-fatal hook inventory warnings |
+
+The WAL migration fixture keeps a reader transaction open while committed legacy data remains in the source WAL. The independently opened backup contains that data, reports schema version 0, omits the version-1 column, and passes `integrity_check`. Failure injection leaves the source at version 0, publishes no backup or verification marker, removes temporary artifacts, rejects an older unmarked backup, and permits a later clean migration. These results use Windows and Node 24.19.0; Node 22.16.0 plus Ubuntu/macOS remain pending hosted CI.

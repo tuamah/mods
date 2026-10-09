@@ -26,7 +26,7 @@ Verified on 2026-10-08.
 |---|---:|---|---|
 | Claude Code | 2.1.295 | VERIFIED-LOCAL | `claude.exe --version`; this is the tested baseline. Older versions are unsupported unless separately verified. |
 | Codex CLI | 0.162.0-alpha.2 | VERIFIED-LOCAL | `codex.exe --version`; this alpha build is the tested baseline. Older versions are unsupported unless separately verified. It emitted non-fatal access warnings while cleaning stale arg0 aliases. |
-| Node.js | 24.19.0 | VERIFIED-LOCAL | Project minimum is Node 22.5 because `node:sqlite` first appeared there; 24.19.0 is the tested baseline and exposes `DatabaseSync`, `StatementSync`, and backup. |
+| Node.js | 24.19.0 | VERIFIED-LOCAL | Project minimum is Node 22.16 because that is the first release exposing every required `node:sqlite` API, including `backup` and the `DatabaseSync` timeout option; 24.19.0 is the tested local baseline. |
 | npm / npx | unavailable on PATH | VERIFIED-LOCAL | Implementation must not assume npm is installed. |
 | Git | 2.42.0.windows.2 | VERIFIED-LOCAL | Repository history and branch inspected. |
 
@@ -105,7 +105,7 @@ The first run reported `EPERM`, symlink/path traversal warnings, and an unreadab
 
 ## Build and test strategy without npm
 
-The project uses Node directly and selects no external runtime dependency. Node 22.5+ supplies `node:sqlite`; Node's built-in test runner executes `node --test tests-v2/*.test.mjs`. The Claude-owned test harness runs through `claude plugin test .`. Missing npm is an environment constraint, not a reason to omit tests.
+The project uses Node directly and selects no external runtime dependency. Node 22.16+ supplies every `node:sqlite` API used by MODS; Node's built-in test runner executes `node --test tests-v2/*.test.mjs`. The Claude-owned test harness runs through `claude plugin test .`. Missing npm is an environment constraint, not a reason to omit tests.
 
 ## Independent reviewer decision
 

@@ -11,7 +11,7 @@ The Claude band shows:
 
 ## Install
 
-Requires Node.js 22.5 or newer. npm is not required.
+Requires Node.js 22.16 or newer. npm is not required.
 
 Preview every change first:
 

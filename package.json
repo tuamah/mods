@@ -7,7 +7,7 @@
     "mods": "./packages/cli/bin/mods.mjs"
   },
   "engines": {
-    "node": ">=22.5.0"
+    "node": ">=22.16.0"
   },
   "scripts": {
     "test": "node --test tests-v2/*.test.mjs",

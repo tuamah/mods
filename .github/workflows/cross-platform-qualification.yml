@@ -20,7 +20,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [windows-latest, ubuntu-latest, macos-latest]
-        node: [22.5.1, 24.x]
+        node: [22.16.0, 24.x]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -29,10 +29,18 @@ jobs:
       - name: Verify selected Node runtime
         shell: pwsh
         run: |
-          node -e "const requested='${{ matrix.node }}'; const actual=process.versions.node; if (requested==='22.5.1' && actual!=='22.5.1') { console.error('BLOCKED: required Node 22.5.1, got '+actual); process.exit(2) }; if (requested==='24.x' && !actual.startsWith('24.')) { console.error('BLOCKED: required Node 24.x, got '+actual); process.exit(2) }; console.log(actual)"
+          node -e "const requested='${{ matrix.node }}'; const actual=process.versions.node; if (requested==='22.16.0' && actual!=='22.16.0') { console.error('BLOCKED: required Node 22.16.0, got '+actual); process.exit(2) }; if (requested==='24.x' && !actual.startsWith('24.')) { console.error('BLOCKED: required Node 24.x, got '+actual); process.exit(2) }; console.log(actual)"
       - name: Run isolated automated qualification
         shell: pwsh
         run: node --test tests-v2/*.test.mjs
+      - name: Repeat Windows concurrency regression
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          1..5 | ForEach-Object {
+            node --test tests-v2/concurrency.test.mjs
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
       - name: Check repository remained unchanged
         shell: pwsh
         run: |
