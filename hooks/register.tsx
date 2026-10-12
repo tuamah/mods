@@ -1,5 +1,7 @@
 import { atom, read, update } from 'claude-code'
 import type { Hook, Register, SessionRateLimit } from 'claude-code'
+// @ts-expect-error Hook-local ESM helper; contains no Node imports.
+import { sharedCliUrl, SHARED_CLI } from './shared-cli.mjs'
 
 import type {
   Experiment,
@@ -153,8 +155,41 @@ async function saveTracked(
 ) {
   const next = await update($, tracked, fn)
   await $.store.set(storeKey(await read($, git)), next)
+  await syncShared($, next)
 
   return next
+}
+
+async function shared($: Dollar, args: string[]): Promise<any | null> {
+  try {
+    const cwd = await $.session.cwd()
+    const out = await $.process.run(['node', '-e', SHARED_CLI, sharedCliUrl(), ...args, '--cwd', cwd], { timeoutMs: 10000 })
+    if (out.exitCode !== 0) throw new Error(out.stderr || `exit ${out.exitCode}`)
+    return JSON.parse(out.stdout)
+  } catch (error) {
+    await $.ui.toast(`project-status shared storage: ${error instanceof Error ? error.message : String(error)}`)
+    return null
+  }
+}
+
+async function syncShared($: Dollar, next: Tracked) {
+  await shared($, ['bridge', 'sync-legacy', '--host', 'claude', '--state', JSON.stringify(next)])
+}
+
+async function refreshShared($: Dollar) {
+  const status = await shared($, ['status', '--format', 'json'])
+  if (!status) return
+  const exp = status.displayExperiment
+  const next: Tracked = {
+    progress: status.progress,
+    experiment: exp ? {
+      name: exp.name,
+      kind: exp.type,
+      result: exp.status === 'completed' && (exp.result === 'success' || exp.result === 'fail') ? exp.result : 'running',
+    } : null,
+  }
+  await update($, tracked, () => next)
+  await $.store.set(storeKey(await read($, git)), next)
 }
 
 export const register: Register = on => {
@@ -191,6 +226,7 @@ export const register: Register = on => {
     })
 
     await refreshGit($)
+    await refreshShared($)
     const measured = await $.session.usage()
     await setUsage($, measured.rateLimits, measured.startedAt)
     const ms = await $.clock.now()
@@ -210,6 +246,7 @@ export const register: Register = on => {
 
   on('turn.complete', async ($, e, next) => {
     await refreshGit($)
+    await refreshShared($)
     const ms = await $.clock.now()
     await update($, now, () => ms)
 

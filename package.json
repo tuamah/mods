@@ -1,0 +1,17 @@
+{
+  "name": "@tuamah/mods",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "mods": "./packages/cli/bin/mods.mjs"
+  },
+  "engines": {
+    "node": ">=22.16.0"
+  },
+  "scripts": {
+    "test": "node --test tests-v2/*.test.mjs",
+    "mods": "node packages/cli/bin/mods.mjs",
+    "mcp": "node packages/mcp-server/src/server.mjs"
+  }
+}

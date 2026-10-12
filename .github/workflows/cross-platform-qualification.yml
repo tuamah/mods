@@ -1,0 +1,48 @@
+name: Cross-platform qualification
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mods-qualification-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  automated-qualification:
+    name: ${{ matrix.os }} / Node ${{ matrix.node }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+        node: [22.16.0, 24.x]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Verify selected Node runtime
+        shell: pwsh
+        run: |
+          node -e "const requested='${{ matrix.node }}'; const actual=process.versions.node; if (requested==='22.16.0' && actual!=='22.16.0') { console.error('BLOCKED: required Node 22.16.0, got '+actual); process.exit(2) }; if (requested==='24.x' && !actual.startsWith('24.')) { console.error('BLOCKED: required Node 24.x, got '+actual); process.exit(2) }; console.log(actual)"
+      - name: Run isolated automated qualification
+        shell: pwsh
+        run: node --test tests-v2/*.test.mjs
+      - name: Repeat Windows concurrency regression
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          1..5 | ForEach-Object {
+            node --test tests-v2/concurrency.test.mjs
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+      - name: Check repository remained unchanged
+        shell: pwsh
+        run: |
+          git diff --check
+          if (git status --porcelain --untracked-files=all) { Write-Error 'Tests modified the checkout'; exit 1 }

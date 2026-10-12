@@ -1,0 +1,23 @@
+# Documentation template only. Prefer `mods install --host codex --project <path>
+# --apply`, which writes resolved absolute runtime/project paths. Replace every
+# placeholder below before manually merging this project-scoped block.
+[mcp_servers.project-status]
+command = "node"
+args = ["C:\\absolute\\path\\to\\mods\\packages\\mcp-server\\src\\server.mjs"]
+cwd = "C:\\absolute\\path\\to\\consumer-project"
+required = true
+enabled_tools = [
+  "get_project_status",
+  "set_project_progress",
+  "create_experiment",
+  "start_experiment",
+  "update_experiment",
+  "finish_experiment",
+  "cancel_experiment",
+  "resume_experiment",
+  "get_current_experiment",
+  "list_experiments",
+  "get_experiment_history",
+  "get_experiment",
+  "export_experiments",
+]
